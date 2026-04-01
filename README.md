@@ -1,84 +1,106 @@
-# WristHit 🎵
+# WristHit
 
-Identify songs from your wrist. A Shazam-like mini app for the **Amazfit GTR 4** (Zepp OS 3.x).
+Identify any song playing around you — straight from your wrist. A Shazam-powered mini app for the **Amazfit GTR 4** running Zepp OS 3.x.
 
-## How it works
+Tap the button, hold your watch near the music for 6 seconds, and get the song name and artist back on your watch.
 
-1. Tap the button on your watch
-2. WristHit records 6 seconds of audio via the built-in mic
-3. The audio is sent to your phone over Bluetooth
-4. Your phone calls the Shazam API and gets the song name
-5. The result appears on your watch in seconds
+## Features
+
+- One-tap song identification via the [Shazam API](https://rapidapi.com/apidojo/api/shazam)
+- Live 6-second countdown during recording
+- Haptic feedback when a match is found
+- Song history — browse your last 10 identified tracks
+- Handles "no match" and connection errors with distinct UI states
+- Auto-resets to idle after showing a result
 
 ## Requirements
 
 - Amazfit GTR 4 running Zepp OS 3.0 or later
-- [Zepp app](https://www.zepp.com/) on your phone (Android or iOS)
-- [Zeus CLI](https://docs.zepp.com/docs/guides/tools/cli/) installed on your computer
+- [Zepp app](https://www.zepp.com/) installed on your phone (Android or iOS)
+- [Zeus CLI](https://docs.zepp.com/docs/guides/tools/cli/) for building and sideloading
 - Node.js 16+
-- A free [RapidAPI](https://rapidapi.com/apidojo/api/shazam) account for the Shazam API key
+- A free [RapidAPI](https://rapidapi.com/apidojo/api/shazam) account (500 requests/month on the free tier)
 
-## Setup
+## Getting started
 
-### 1. Install Zeus CLI
+### 1. Clone and install
 
 ```bash
+git clone https://github.com/your-username/wrist-hit.git
+cd wrist-hit
+npm install
 npm install -g @zeppos/zeus-cli
 ```
 
-### 2. Get your API key
-
-- Sign up at [rapidapi.com](https://rapidapi.com/apidojo/api/shazam)
-- Subscribe to the **Shazam** API (free tier: 500 requests/month)
-- Copy your API key
-
-### 3. Add your API key
-
-Open `side-service/index.js` and replace:
-
-```js
-const RAPIDAPI_KEY = 'YOUR_RAPIDAPI_KEY'
-```
-
-with your actual key.
-
-### 4. Enable Developer Mode on your watch
-
-In the **Zepp app** on your phone:
-- Go to **Profile → Amazfit GTR 4 → Device Info**
-- Tap the firmware version 7 times to enable developer mode
-
-### 5. Build and install
+### 2. Add your Shazam API key
 
 ```bash
-# Preview on device (watch must be connected via Zepp app)
-zeus preview
+cp side-service/config.example.js side-service/config.js
+```
 
-# Or build a .zpk package
-zeus build
+Open `side-service/config.js` and replace `YOUR_RAPIDAPI_KEY` with your key from RapidAPI. This file is gitignored and will never be committed.
+
+### 3. Enable Developer Mode on your watch
+
+In the Zepp app on your phone, go to **Profile → Amazfit GTR 4 → Device Info** and tap the firmware version 7 times.
+
+### 4. Install on your watch
+
+```bash
+zeus preview   # sideload directly to the watch
+# or
+zeus build     # produce a .zpk package
+```
+
+## How it works
+
+```
+Tap watch button
+      │
+      ▼
+Watch records 6s of audio (OPUS via @zos/media)
+      │
+      ▼
+Audio transferred to phone over BLE (@zos/ble TransferFile)
+      │
+      ▼
+Phone-side service base64-encodes the file,
+POSTs it to the Shazam API (RapidAPI)
+      │
+      ▼
+API returns song title + artist
+      │
+      ▼
+Result sent back to watch via MessageBuilder
+Watch displays the match and vibrates
 ```
 
 ## Project structure
 
 ```
 wristhit/
-├── app.json                  # App manifest (ID, permissions, target device)
+├── app.json                    # App manifest — ID, permissions, target device
 ├── device-app/
 │   └── page/
-│       └── index.js          # Watch UI + recording logic
+│       ├── index.js            # Watch UI, recording logic, state machine
+│       └── history.js          # Song history page (last 10 matches)
 ├── side-service/
-│   └── index.js              # Phone-side API calls to Shazam
+│   ├── index.js                # Phone-side Shazam API integration
+│   └── config.example.js       # API key template — copy to config.js
 └── assets/
-    └── icon/                 # Place your app icon here (80×80 PNG)
+    └── icon.png                # App icon (80×80 PNG)
 ```
 
-## Customisation ideas
+## Contributing
 
-- Show album art (the API returns a cover art URL)
-- Save a history of identified songs
-- Add haptic feedback when a match is found
-- Support longer recordings for harder-to-identify tracks
+```bash
+npm run fix          # Autofix ESLint + Prettier issues
+npm run lint:eslint  # ESLint check only
+npm run lint:prettier # Prettier check only
+```
+
+Commits must follow the [Conventional Commits](https://www.conventionalcommits.org/) format — this is enforced by commitlint on every commit.
 
 ## License
 
-MIT — do whatever you want with it.
+MIT

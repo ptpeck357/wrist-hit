@@ -1,0 +1,7 @@
+side-service/config.js
+node_modules/
+.zeus/
+build/
+TODO.md
+.DS_Store
+*.zpk
