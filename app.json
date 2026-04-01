@@ -1,0 +1,22 @@
+{
+  "app": {
+    "appId": 1000001,
+    "appName": "WristHit",
+    "appType": "app",
+    "version": {
+      "code": 1,
+      "name": "1.0.0"
+    },
+    "icon": "icon.png",
+    "vender": "wristhit",
+    "description": "Identify songs from your wrist",
+    "permissions": [
+      "device:os.media"
+    ],
+    "targets": {
+      "gtr4": {
+        "deviceSource": 7995648
+      }
+    }
+  }
+}
