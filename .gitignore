@@ -1,7 +1,9 @@
-side-service/config.js
+src/side-service/config.ts
 node_modules/
 .zeus/
 build/
-TODO.md
+dist/
+*.tsbuildinfo
+*TODO.md
 .DS_Store
 *.zpk

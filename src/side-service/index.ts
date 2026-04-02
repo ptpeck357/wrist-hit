@@ -7,14 +7,15 @@
  *
  * Setup:
  *   1. Get a free API key from https://rapidapi.com/apidojo/api/shazam
- *   2. Copy side-service/config.example.js to side-service/config.js
- *   3. Replace YOUR_RAPIDAPI_KEY in config.js with your actual key
+ *   2. Copy side-service/config.example.ts to side-service/config.ts
+ *   3. Replace YOUR_RAPIDAPI_KEY in config.ts with your actual key
  */
 
 import { MessageBuilder } from '@zos/router';
 import { readFileSync } from '@zos/fs';
 import { log } from '@zos/utils';
-import { RAPIDAPI_KEY } from './config.js';
+import { RAPIDAPI_KEY } from './config';
+import type { SongResult } from '../types/index.js';
 
 const messageBuilder = new MessageBuilder();
 
@@ -25,14 +26,14 @@ const RATE_LIMIT_MS = 8000; // minimum ms between identify requests
 
 if (RAPIDAPI_KEY === 'YOUR_RAPIDAPI_KEY') {
 	throw new Error(
-		'WristHit: RAPIDAPI_KEY is not configured. Copy side-service/config.example.js to config.js and add your key.',
+		'WristHit: RAPIDAPI_KEY is not configured. Copy side-service/config.example.ts to config.ts and add your key.',
 	);
 }
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 let lastRequestTime = 0;
 
-function isRateLimited() {
+function isRateLimited(): boolean {
 	const now = Date.now();
 	if (now - lastRequestTime < RATE_LIMIT_MS) return true;
 	lastRequestTime = now;
@@ -41,7 +42,7 @@ function isRateLimited() {
 
 // ─── Listen for messages from the watch ─────────────────────────────────────
 messageBuilder.on('request', async (ctx) => {
-	const { action, filePath } = ctx.request.payload;
+	const { action, filePath } = ctx.request.payload as { action: string; filePath: string };
 
 	if (action !== 'identify') return;
 
@@ -52,7 +53,7 @@ messageBuilder.on('request', async (ctx) => {
 	}
 
 	// Validate file path — only allow the expected filename, no traversal
-	if (typeof filePath !== 'string' || !ALLOWED_FILE_PATH.test(filePath.split('/').pop())) {
+	if (typeof filePath !== 'string' || !ALLOWED_FILE_PATH.test(filePath.split('/').pop() ?? '')) {
 		log.error('WristHit: rejected invalid file path');
 		ctx.response({ data: { error: 'Invalid request' } });
 		return;
@@ -64,20 +65,20 @@ messageBuilder.on('request', async (ctx) => {
 		const result = await identifySong(filePath);
 		ctx.response({ data: result });
 	} catch (err) {
-		log.error('WristHit: identification failed:', err.message);
+		log.error('WristHit: identification failed:', (err as Error).message);
 		ctx.response({ data: { error: 'Identification failed' } });
 	}
 });
 
 // ─── Core identification function ────────────────────────────────────────────
-async function identifySong(filePath) {
+async function identifySong(filePath: string): Promise<SongResult> {
 	const fileData = readFileSync({ path: filePath });
 
 	if (!fileData) {
 		throw new Error('Could not read audio file');
 	}
 
-	const base64Audio = arrayBufferToBase64(fileData);
+	const base64Audio = arrayBufferToBase64(fileData as ArrayBuffer);
 
 	log.debug('WristHit: audio encoded, sending to API');
 
@@ -113,13 +114,13 @@ async function identifySong(filePath) {
 }
 
 // ─── Sanitize a string from the API response ─────────────────────────────────
-function sanitizeString(value) {
+function sanitizeString(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	return value.trim().slice(0, MAX_SONG_LENGTH) || null;
 }
 
 // ─── Utility: ArrayBuffer → base64 string ───────────────────────────────────
-function arrayBufferToBase64(buffer) {
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
 	const bytes = new Uint8Array(buffer);
 	let binary = '';
 	for (let i = 0; i < bytes.byteLength; i++) {

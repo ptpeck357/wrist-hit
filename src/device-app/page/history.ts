@@ -1,6 +1,7 @@
 import { createWidget, widget, align, text_style, event } from '@zos/ui';
 import { localStorage } from '@zos/storage';
 import { back } from '@zos/router';
+import type { HistoryEntry } from '../../types/index.js';
 
 const SCREEN_W = 466;
 const SCREEN_H = 466;
@@ -11,16 +12,16 @@ Page({
 	},
 });
 
-function getHistory() {
+function getHistory(): HistoryEntry[] {
 	try {
 		const raw = localStorage.getItem('wristhit_history');
-		return raw ? JSON.parse(raw) : [];
+		return raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
 	} catch {
 		return [];
 	}
 }
 
-function buildUI() {
+function buildUI(): void {
 	const history = getHistory();
 
 	// Background
@@ -80,7 +81,7 @@ function buildUI() {
 		h: SCREEN_H - 120,
 		item_height: 80,
 		item_count: history.length,
-		render_func: (index, item) => {
+		render_func: (index: number, item: { createWidget: typeof createWidget }) => {
 			const entry = history[index];
 
 			item.createWidget(widget.TEXT, {

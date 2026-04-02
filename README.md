@@ -35,21 +35,22 @@ npm install -g @zeppos/zeus-cli
 ### 2. Add your Shazam API key
 
 ```bash
-cp side-service/config.example.js side-service/config.js
+cp src/side-service/config.example.ts src/side-service/config.ts
 ```
 
-Open `side-service/config.js` and replace `YOUR_RAPIDAPI_KEY` with your key from RapidAPI. This file is gitignored and will never be committed.
+Open `src/side-service/config.ts` and replace `YOUR_RAPIDAPI_KEY` with your key from RapidAPI. This file is gitignored and will never be committed.
 
 ### 3. Enable Developer Mode on your watch
 
 In the Zepp app on your phone, go to **Profile → Amazfit GTR 4 → Device Info** and tap the firmware version 7 times.
 
-### 4. Install on your watch
+### 4. Build and install on your watch
 
 ```bash
-zeus preview   # sideload directly to the watch
+npm run build    # compile TypeScript → dist/
+zeus preview     # sideload directly to the watch
 # or
-zeus build     # produce a .zpk package
+zeus build       # produce a .zpk package
 ```
 
 ## How it works
@@ -79,21 +80,28 @@ Watch displays the match and vibrates
 
 ```
 wristhit/
-├── app.json                    # App manifest — ID, permissions, target device
-├── device-app/
-│   └── page/
-│       ├── index.js            # Watch UI, recording logic, state machine
-│       └── history.js          # Song history page (last 10 matches)
-├── side-service/
-│   ├── index.js                # Phone-side Shazam API integration
-│   └── config.example.js       # API key template — copy to config.js
-└── assets/
-    └── icon.png                # App icon (80×80 PNG)
+├── src/
+│   ├── app.json                    # App manifest — ID, permissions, target device
+│   ├── assets/
+│   │   └── logo.svg                # App logo (export to icon.png for production)
+│   ├── device-app/
+│   │   └── page/
+│   │       ├── index.ts            # Watch UI, recording logic, state machine
+│   │       └── history.ts          # Song history page (last 10 matches)
+│   ├── side-service/
+│   │   ├── index.ts                # Phone-side Shazam API integration
+│   │   └── config.example.ts       # API key template — copy to config.ts
+│   └── types/
+│       └── index.ts                # Shared TypeScript types
+├── dist/                           # Compiled output (gitignored) — zeus builds from here
+└── tsconfig.json
 ```
 
 ## Contributing
 
 ```bash
+npm run typecheck    # TypeScript type check
+npm run build        # Compile TS → dist/
 npm run fix          # Autofix ESLint + Prettier issues
 npm run lint:eslint  # ESLint check only
 npm run lint:prettier # Prettier check only

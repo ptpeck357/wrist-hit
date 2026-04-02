@@ -7,6 +7,7 @@ import { localStorage } from '@zos/storage';
 import { TransferFile } from '@zos/ble';
 import { vibrate } from '@zos/interaction';
 import { queryPermission, requestPermission } from '@zos/permission';
+import type { AppState, HistoryEntry } from '../../types/index.js';
 
 const messageBuilder = new MessageBuilder();
 
@@ -17,13 +18,13 @@ const CENTER_X = SCREEN_W / 2;
 const CENTER_Y = SCREEN_H / 2;
 
 // ─── State ─────────────────────────────────────────────────────────────────
-let state = 'idle'; // idle | recording | waiting | result | nomatch | error
-let recorder = null;
-let statusText = null;
-let countdownText = null;
-let songText = null;
-let artistText = null;
-let tapBtn = null;
+let state: AppState = 'idle';
+let recorder: ReturnType<typeof create> | null = null;
+let statusText: ReturnType<typeof createWidget> | null = null;
+let countdownText: ReturnType<typeof createWidget> | null = null;
+let songText: ReturnType<typeof createWidget> | null = null;
+let artistText: ReturnType<typeof createWidget> | null = null;
+let tapBtn: ReturnType<typeof createWidget> | null = null;
 
 // ─── UI Setup ──────────────────────────────────────────────────────────────
 Page({
@@ -40,7 +41,7 @@ Page({
 	},
 });
 
-function buildUI() {
+function buildUI(): void {
 	// Background
 	createWidget(widget.FILL_RECT, {
 		x: 0,
@@ -158,7 +159,7 @@ function buildUI() {
 }
 
 // ─── Recording ─────────────────────────────────────────────────────────────
-function startRecording() {
+function startRecording(): void {
 	const permStatus = queryPermission({ permissions: ['device:os.media'] });
 	if (permStatus[0] !== 2) {
 		// Permission not granted — request it; user must tap again after granting
@@ -186,13 +187,13 @@ function startRecording() {
 
 	// Countdown from 6 to 0, updating every second
 	let secondsLeft = 6;
-	countdownText.setProperty(prop.TEXT, String(secondsLeft));
+	countdownText!.setProperty(prop.TEXT, String(secondsLeft));
 	createTimer({
 		repeat: true,
 		timeout: 1000,
 		callback: () => {
 			secondsLeft -= 1;
-			countdownText.setProperty(prop.TEXT, secondsLeft > 0 ? String(secondsLeft) : '');
+			countdownText!.setProperty(prop.TEXT, secondsLeft > 0 ? String(secondsLeft) : '');
 		},
 	});
 
@@ -207,17 +208,18 @@ function startRecording() {
 }
 
 // ─── Send audio to Side Service on phone ────────────────────────────────────
-function sendToPhone() {
+function sendToPhone(): void {
 	setState('waiting');
 
 	const transfer = TransferFile.getFileTransferInstance();
 	transfer.transferFile(
 		{ localPath: 'data://wristhit_sample.opus', remoteName: 'wristhit_sample.opus' },
 		{
-			onComplete(remoteFilePath) {
+			onComplete(remoteFilePath: string) {
 				messageBuilder
 					.request({ action: 'identify', filePath: remoteFilePath }, { timeout: 30000 })
-					.then((result) => {
+					.then((raw: unknown) => {
+						const result = raw as { song?: unknown; artist?: unknown } | null;
 						const song = typeof result?.song === 'string' ? result.song.slice(0, 255) : null;
 						const artist = typeof result?.artist === 'string' ? result.artist.slice(0, 255) : '';
 						if (song) {
@@ -238,76 +240,76 @@ function sendToPhone() {
 }
 
 // ─── Display result ─────────────────────────────────────────────────────────
-function saveToHistory(song, artist) {
-	let history = [];
+function saveToHistory(song: string, artist: string): void {
+	let history: HistoryEntry[] = [];
 	try {
 		const raw = localStorage.getItem('wristhit_history');
-		if (raw) history = JSON.parse(raw);
+		if (raw) history = JSON.parse(raw) as HistoryEntry[];
 	} catch {}
 	history.unshift({ song, artist });
 	if (history.length > 10) history = history.slice(0, 10);
 	localStorage.setItem('wristhit_history', JSON.stringify(history));
 }
 
-function showResult(song, artist) {
+function showResult(song: string, artist: string): void {
 	removeFile({ path: 'data://wristhit_sample.opus' });
 	vibrate({ type: 'short' });
 	saveToHistory(song, artist);
 	setState('result');
-	statusText.setProperty(prop.TEXT, '');
-	songText.setProperty(prop.TEXT, song || 'Unknown');
-	artistText.setProperty(prop.TEXT, artist || '');
+	statusText!.setProperty(prop.TEXT, '');
+	songText!.setProperty(prop.TEXT, song || 'Unknown');
+	artistText!.setProperty(prop.TEXT, artist || '');
 	createTimer({ repeat: false, timeout: 5000, callback: () => setState('idle') });
 }
 
-function showNoMatch() {
+function showNoMatch(): void {
 	removeFile({ path: 'data://wristhit_sample.opus' });
 	setState('nomatch');
-	songText.setProperty(prop.TEXT, 'No match');
+	songText!.setProperty(prop.TEXT, 'No match');
 	createTimer({ repeat: false, timeout: 5000, callback: () => setState('idle') });
 }
 
-function showError(msg) {
+function showError(msg: string): void {
 	removeFile({ path: 'data://wristhit_sample.opus' });
 	setState('error');
-	statusText.setProperty(prop.TEXT, msg);
-	songText.setProperty(prop.TEXT, '');
-	artistText.setProperty(prop.TEXT, '');
+	statusText!.setProperty(prop.TEXT, msg);
+	songText!.setProperty(prop.TEXT, '');
+	artistText!.setProperty(prop.TEXT, '');
 	createTimer({ repeat: false, timeout: 5000, callback: () => setState('idle') });
 }
 
 // ─── State machine ──────────────────────────────────────────────────────────
-function setState(newState) {
+function setState(newState: AppState): void {
 	state = newState;
 
 	// Reset display
-	statusText.setProperty(prop.TEXT, '');
-	countdownText.setProperty(prop.TEXT, '');
-	songText.setProperty(prop.TEXT, '');
-	artistText.setProperty(prop.TEXT, '');
+	statusText!.setProperty(prop.TEXT, '');
+	countdownText!.setProperty(prop.TEXT, '');
+	songText!.setProperty(prop.TEXT, '');
+	artistText!.setProperty(prop.TEXT, '');
 
 	switch (newState) {
 		case 'idle':
-			statusText.setProperty(prop.TEXT, 'Tap to identify a song');
-			tapBtn.setProperty(prop.COLOR, 0x1db954);
+			statusText!.setProperty(prop.TEXT, 'Tap to identify a song');
+			tapBtn!.setProperty(prop.COLOR, 0x1db954);
 			break;
 		case 'recording':
-			statusText.setProperty(prop.TEXT, 'Listening...');
-			tapBtn.setProperty(prop.COLOR, 0xe53935); // red while recording
+			statusText!.setProperty(prop.TEXT, 'Listening...');
+			tapBtn!.setProperty(prop.COLOR, 0xe53935); // red while recording
 			break;
 		case 'waiting':
-			statusText.setProperty(prop.TEXT, 'Identifying...');
-			tapBtn.setProperty(prop.COLOR, 0xffa000); // amber while waiting
+			statusText!.setProperty(prop.TEXT, 'Identifying...');
+			tapBtn!.setProperty(prop.COLOR, 0xffa000); // amber while waiting
 			break;
 		case 'result':
-			tapBtn.setProperty(prop.COLOR, 0x1db954);
+			tapBtn!.setProperty(prop.COLOR, 0x1db954);
 			break;
 		case 'nomatch':
-			songText.setProperty(prop.COLOR, 0x888888); // softer colour vs error red
-			tapBtn.setProperty(prop.COLOR, 0x1db954);
+			songText!.setProperty(prop.COLOR, 0x888888); // softer colour vs error red
+			tapBtn!.setProperty(prop.COLOR, 0x1db954);
 			break;
 		case 'error':
-			tapBtn.setProperty(prop.COLOR, 0xe53935); // red to signal a real problem
+			tapBtn!.setProperty(prop.COLOR, 0xe53935); // red to signal a real problem
 			break;
 	}
 }
